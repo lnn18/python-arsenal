@@ -10,7 +10,8 @@ src/app/
 ├── schemas.py                # Contratos Pydantic de request/response
 ├── http_client.py            # Cliente HTTP compartido con retry/backoff (httpx + tenacity)
 └── integrations/
-    └── trm_client.py         # Integración con la TRM oficial
+    ├── trm_client.py         # Integración con la TRM oficial
+    └── coingecko_client.py   # Integración con CoinGecko (precio de Bitcoin)
 ```
 
 ## Requisitos
@@ -36,7 +37,8 @@ make check         # lint + typecheck + test
 
 ## Endpoints
 
-- `GET /` — página HTML con el conversor
+- `GET /` — página HTML con el conversor y el precio de Bitcoin
 - `GET /convertir?monto=100` — convierte USD a COP (HTML)
 - `GET /trm` — TRM vigente (JSON)
+- `GET /bitcoin` — precio de Bitcoin en USD y COP, vía CoinGecko (JSON)
 - `GET /health` — health check
