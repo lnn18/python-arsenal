@@ -1,0 +1,31 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "f=$(python -c \"import json,sys; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path','') or d.get('tool_response',{}).get('filePath',''))\"); case \"$f\" in *.py) .venv/Scripts/python.exe -m ruff format \"$f\" 2>&1; .venv/Scripts/python.exe -m ruff check --fix \"$f\" 2>&1 ;; esac",
+            "timeout": 30,
+            "statusMessage": "Formateando con ruff..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "PY=.venv/Scripts/python.exe; out=$(\"$PY\" -m ruff check . 2>&1 && \"$PY\" -m mypy src 2>&1 && \"$PY\" -m pytest -q 2>&1); status=$?; if [ $status -ne 0 ]; then tail=$(printf '%s' \"$out\" | tail -c 1500); python -c \"import json,sys; print(json.dumps({'systemMessage': 'make check fallo (lint/typecheck/test) - revisa antes de commitear:\\n' + sys.argv[1]}))\" \"$tail\"; fi",
+            "timeout": 60,
+            "statusMessage": "Verificando lint/tipos/tests..."
+          }
+        ]
+      }
+    ]
+  }
+}

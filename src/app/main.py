@@ -2,8 +2,9 @@ import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
+from app.integrations.coingecko_client import get_bitcoin_price_usd
 from app.integrations.trm_client import get_trm
-from app.schemas import HealthResponse, TrmResponse
+from app.schemas import BitcoinResponse, HealthResponse, TrmResponse
 
 app = FastAPI(title="Cambio Hoy")
 
@@ -35,7 +36,21 @@ async def home() -> str:
         trm = await get_trm()
         trm_html = f'<p class="valor">${trm:,.2f} COP</p>'
     except httpx.HTTPError:
+        trm = None
         trm_html = "<p>No se pudo consultar la TRM en este momento.</p>"
+
+    bitcoin_html = "<p>No se pudo consultar el precio de Bitcoin en este momento.</p>"
+    if trm is not None:
+        try:
+            btc_usd = await get_bitcoin_price_usd()
+            btc_cop = btc_usd * trm
+            bitcoin_html = f"""
+            <p class="valor">${btc_usd:,.2f} USD</p>
+            <p class="valor">${btc_cop:,.2f} COP</p>
+            <p class="fuente">Precio vía CoinGecko, convertido con la TRM oficial</p>
+            """
+        except httpx.HTTPError:
+            pass
 
     return f"""
     <html><head><title>Cambio Hoy</title>{PAGE_STYLE}</head>
@@ -47,6 +62,9 @@ async def home() -> str:
         <input type="number" step="0.01" name="monto" placeholder="Monto en USD" required>
         <button type="submit">Convertir a COP</button>
       </form>
+      <h1>Bitcoin</h1>
+      <p>Precio actual de Bitcoin:</p>
+      {bitcoin_html}
     </body></html>
     """
 
@@ -83,6 +101,21 @@ async def trm_json() -> TrmResponse:
         moneda="USD/COP",
         valor=valor,
         fuente="Superintendencia Financiera de Colombia",
+    )
+
+
+@app.get("/bitcoin", response_model=BitcoinResponse)
+async def bitcoin_json() -> BitcoinResponse:
+    try:
+        trm = await get_trm()
+        precio_usd = await get_bitcoin_price_usd()
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="Bitcoin price provider unavailable") from exc
+    return BitcoinResponse(
+        precio_usd=precio_usd,
+        precio_cop=precio_usd * trm,
+        trm=trm,
+        fuente="CoinGecko",
     )
 
 
